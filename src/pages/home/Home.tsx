@@ -13,7 +13,7 @@ function Home({ setGameStarted }: HomeProps) {
 
     return (
         <div className='home'>
-            <button className='start-game' onClick={startGame}>Start Game</button>
+            <button className='start-game' onClick={startGame}>⭐ Start Game</button>
         </div>
     )
 }
