@@ -29,6 +29,7 @@ interface CardProps {
   onDrop?: (e: React.DragEvent) => void
   style?: React.CSSProperties
   isEmpty?: boolean
+  cardBackground?: string
 }
 
 const Card: React.FC<CardProps> = ({ 
@@ -39,13 +40,14 @@ const Card: React.FC<CardProps> = ({
   onDragOver, 
   onDrop, 
   style,
-  isEmpty = false 
+  isEmpty = false,
+  cardBackground = 'classic_blue'
 }) => {
   if (!card && !isEmpty) return null
 
   const getCardImage = (card: Card) => {
     if (!card.faceUp) {
-      return `/src/assets/card-icons/card-backgrounds/classic_blue.png`
+      return `/src/assets/card-icons/card-backgrounds/${cardBackground}.png`
     }
     return `/src/assets/card-icons/${card.suit}/${card.rank}.png`
   }
@@ -98,6 +100,10 @@ function Game() {
   })
   const [selectedCard, setSelectedCard] = useState<{card: Card, source: string, index?: number} | null>(null)
   const [draggedCard, setDraggedCard] = useState<{card: Card, source: string, index?: number} | null>(null)
+  const [gameHistory, setGameHistory] = useState<GameState[]>([])
+  const [cardBackground, setCardBackground] = useState<string>('classic_blue')
+  const [showSettings, setShowSettings] = useState<boolean>(false)
+  const [showRestartConfirm, setShowRestartConfirm] = useState<boolean>(false)
 
   // Initialize deck and shuffle
   const createDeck = (): Card[] => {
@@ -151,6 +157,11 @@ function Game() {
     })
   }
 
+  // Save game state to history
+  const saveGameState = (state: GameState) => {
+    setGameHistory(prev => [...prev, JSON.parse(JSON.stringify(state))].slice(-10)) // Keep last 10 moves
+  }
+
   // Initialize game on component mount
   useEffect(() => {
     dealCards()
@@ -158,6 +169,7 @@ function Game() {
 
   // Handle stock click (draw cards)
   const handleStockClick = () => {
+    saveGameState(gameState)
     setGameState(prev => {
       if (prev.stock.length === 0) {
         // Reset stock from waste
@@ -175,6 +187,95 @@ function Game() {
         }
       }
     })
+  }
+
+  // Undo last move
+  const handleUndo = () => {
+    if (gameHistory.length > 0) {
+      const previousState = gameHistory[gameHistory.length - 1]
+      setGameState(previousState)
+      setGameHistory(prev => prev.slice(0, -1))
+      setSelectedCard(null)
+    }
+  }
+
+  // Get hint for next move
+  const getHint = (): string => {
+    // Check for cards that can move to foundations
+    const wasteCard = gameState.waste[gameState.waste.length - 1]
+    if (wasteCard && wasteCard.faceUp) {
+      for (let i = 0; i < 4; i++) {
+        if (canPlaceOnFoundation(wasteCard, i)) {
+          return "Move the waste pile card to a foundation!"
+        }
+      }
+    }
+
+    // Check tableau cards that can move to foundations
+    for (let col = 0; col < 7; col++) {
+      const column = gameState.tableau[col]
+      if (column.length > 0) {
+        const topCard = column[column.length - 1]
+        if (topCard.faceUp) {
+          for (let i = 0; i < 4; i++) {
+            if (canPlaceOnFoundation(topCard, i)) {
+              return `Move a card from column ${col + 1} to a foundation!`
+            }
+          }
+        }
+      }
+    }
+
+    // Check for face-down cards that can be flipped
+    for (let col = 0; col < 7; col++) {
+      const column = gameState.tableau[col]
+      if (column.length > 0) {
+        const topCard = column[column.length - 1]
+        if (!topCard.faceUp) {
+          return `Click the face-down card in column ${col + 1} to flip it!`
+        }
+      }
+    }
+
+    // Check for moves between tableau columns
+    for (let sourceCol = 0; sourceCol < 7; sourceCol++) {
+      const sourceColumn = gameState.tableau[sourceCol]
+      if (sourceColumn.length > 0) {
+        const sourceCard = sourceColumn[sourceColumn.length - 1]
+        if (sourceCard.faceUp) {
+          for (let targetCol = 0; targetCol < 7; targetCol++) {
+            if (sourceCol !== targetCol && canPlaceOnTableau(sourceCard, targetCol)) {
+              return `Move a card from column ${sourceCol + 1} to column ${targetCol + 1}!`
+            }
+          }
+        }
+      }
+    }
+
+    if (gameState.stock.length > 0) {
+      return "Draw cards from the stock pile!"
+    }
+
+    return "No obvious moves available. Try looking for sequences to move!"
+  }
+
+  // Handle hint button
+  const handleHint = () => {
+    const hint = getHint()
+    alert(hint)
+  }
+
+  // Handle restart
+  const handleRestart = () => {
+    setShowRestartConfirm(true)
+  }
+
+  // Confirm restart
+  const confirmRestart = () => {
+    dealCards()
+    setGameHistory([])
+    setSelectedCard(null)
+    setShowRestartConfirm(false)
   }
 
   // Check if a card can be placed on foundation
@@ -303,6 +404,7 @@ function Game() {
 
   // Move card or sequence from source to destination
   const moveCard = (from: {card: Card, source: string, index?: number}, to: string, sequence?: Card[]) => {
+    saveGameState(gameState)
     setGameState(prev => {
       const newState = { ...prev }
       const cardsToMove = sequence || [from.card]
@@ -369,81 +471,86 @@ function Game() {
       <div className='game-board'>
         {/* Top row: Stock, Waste, and Foundations */}
         <div className='top-row'>
-          <div className='stock-waste'>
-            <div className='stock' onClick={handleStockClick}>
-              {gameState.stock.length > 0 ? (
-                <Card card={gameState.stock[gameState.stock.length - 1]} />
-              ) : (
-                <Card card={null} isEmpty />
-              )}
-            </div>
-            <div className='waste'>
-              {gameState.waste.length > 0 ? (
-                <Card 
-                  card={gameState.waste[gameState.waste.length - 1]} 
-                  onClick={() => handleCardClick(
-                    gameState.waste[gameState.waste.length - 1], 
-                    'waste'
-                  )}
-                  onDoubleClick={() => handleDoubleClick(
-                    gameState.waste[gameState.waste.length - 1], 
-                    'waste'
-                  )}
-                  onDragStart={() => handleDragStart(
-                    gameState.waste[gameState.waste.length - 1], 
-                    'waste'
-                  )}
-                  style={{
-                    ...(selectedCard?.card.id === gameState.waste[gameState.waste.length - 1]?.id && { 
-                      boxShadow: '0 0 10px 3px #FFD700',
-                      transform: 'translateY(-5px)'
-                    })
-                  }}
-                />
-              ) : (
-                <Card card={null} isEmpty />
-              )}
-            </div>
-          </div>
-          
-          <div className='foundations'>
-            {gameState.foundations.map((foundation, index) => (
-              <div key={index} className='foundation' onClick={() => {
-                if (selectedCard) {
-                  if (canPlaceOnFoundation(selectedCard.card, index)) {
-                    moveCard(selectedCard, `foundation-${index}`)
-                    setSelectedCard(null)
-                  }
-                }
-              }}>
-                {foundation.length > 0 ? (
+          <div className='top-row-content'>
+            <div className='stock-waste'>
+              <div className='stock' onClick={handleStockClick}>
+                {gameState.stock.length > 0 ? (
+                  <Card card={gameState.stock[gameState.stock.length - 1]} cardBackground={cardBackground} />
+                ) : (
+                  <Card card={null} isEmpty cardBackground={cardBackground} />
+                )}
+              </div>
+              <div className='waste'>
+                {gameState.waste.length > 0 ? (
                   <Card 
-                    card={foundation[foundation.length - 1]} 
+                    card={gameState.waste[gameState.waste.length - 1]} 
                     onClick={() => handleCardClick(
-                      foundation[foundation.length - 1], 
-                      `foundation-${index}`
+                      gameState.waste[gameState.waste.length - 1], 
+                      'waste'
+                    )}
+                    onDoubleClick={() => handleDoubleClick(
+                      gameState.waste[gameState.waste.length - 1], 
+                      'waste'
                     )}
                     onDragStart={() => handleDragStart(
-                      foundation[foundation.length - 1], 
-                      `foundation-${index}`
+                      gameState.waste[gameState.waste.length - 1], 
+                      'waste'
                     )}
-                    onDrop={(e) => handleDrop(e, `foundation-${index}`)}
+                    cardBackground={cardBackground}
                     style={{
-                      ...(selectedCard?.card.id === foundation[foundation.length - 1]?.id && { 
+                      ...(selectedCard?.card.id === gameState.waste[gameState.waste.length - 1]?.id && { 
                         boxShadow: '0 0 10px 3px #FFD700',
                         transform: 'translateY(-5px)'
                       })
                     }}
                   />
                 ) : (
-                  <Card 
-                    card={null} 
-                    isEmpty 
-                    onDrop={(e) => handleDrop(e, `foundation-${index}`)}
-                  />
+                  <Card card={null} isEmpty cardBackground={cardBackground} />
                 )}
               </div>
-            ))}
+            </div>
+            
+            <div className='foundations'>
+              {gameState.foundations.map((foundation, index) => (
+                <div key={index} className='foundation' onClick={() => {
+                  if (selectedCard) {
+                    if (canPlaceOnFoundation(selectedCard.card, index)) {
+                      moveCard(selectedCard, `foundation-${index}`)
+                      setSelectedCard(null)
+                    }
+                  }
+                }}>
+                  {foundation.length > 0 ? (
+                    <Card 
+                      card={foundation[foundation.length - 1]} 
+                      onClick={() => handleCardClick(
+                        foundation[foundation.length - 1], 
+                        `foundation-${index}`
+                      )}
+                      onDragStart={() => handleDragStart(
+                        foundation[foundation.length - 1], 
+                        `foundation-${index}`
+                      )}
+                      onDrop={(e) => handleDrop(e, `foundation-${index}`)}
+                      cardBackground={cardBackground}
+                      style={{
+                        ...(selectedCard?.card.id === foundation[foundation.length - 1]?.id && { 
+                          boxShadow: '0 0 10px 3px #FFD700',
+                          transform: 'translateY(-5px)'
+                        })
+                      }}
+                    />
+                  ) : (
+                    <Card 
+                      card={null} 
+                      isEmpty 
+                      cardBackground={cardBackground}
+                      onDrop={(e) => handleDrop(e, `foundation-${index}`)}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -468,6 +575,7 @@ function Game() {
                 <Card 
                   card={null} 
                   isEmpty 
+                  cardBackground={cardBackground}
                   onDrop={(e) => handleDrop(e, `tableau-${colIndex}`)}
                 />
               ) : (
@@ -481,6 +589,7 @@ function Game() {
                       onDoubleClick={() => handleDoubleClick(card, `tableau-${colIndex}`, cardIndex)}
                       onDragStart={() => handleDragStart(card, `tableau-${colIndex}`, cardIndex)}
                       onDrop={(e) => handleDrop(e, `tableau-${colIndex}`)}
+                      cardBackground={cardBackground}
                       style={{
                         position: 'absolute',
                         top: `${cardIndex * 20}px`,
@@ -504,6 +613,76 @@ function Game() {
             <button onClick={dealCards}>New Game</button>
           </div>
         )}
+      </div>
+
+      
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className='modal-overlay' onClick={() => setShowSettings(false)}>
+          <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+            <h3>Settings</h3>
+            <div className='setting-section'>
+              <h4>Card Background</h4>
+              <div className='background-options'>
+                {['classic_blue', 'classic_brown', 'classic_green', 'classic_red'].map(bg => (
+                  <div 
+                    key={bg}
+                    className={`background-option ${cardBackground === bg ? 'selected' : ''}`}
+                    onClick={() => setCardBackground(bg)}
+                  >
+                    <img 
+                      src={`/src/assets/card-icons/card-backgrounds/${bg}.png`} 
+                      alt={bg}
+                    />
+                    <span>{bg.replace('classic_', '').charAt(0).toUpperCase() + bg.replace('classic_', '').slice(1)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button className='modal-close' onClick={() => setShowSettings(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Restart Confirmation */}
+      {showRestartConfirm && (
+        <div className='modal-overlay' onClick={() => setShowRestartConfirm(false)}>
+          <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+            <h3>Restart Game</h3>
+            <p>Are you sure you want to restart? This will start a new game and you'll lose your current progress.</p>
+            <div className='modal-buttons'>
+              <button className='modal-btn cancel' onClick={() => setShowRestartConfirm(false)}>
+                Cancel
+              </button>
+              <button className='modal-btn confirm' onClick={confirmRestart}>
+                Restart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Game Controls */}
+      <div className='game-controls'>
+        <button 
+          className='control-btn' 
+          onClick={handleUndo}
+          disabled={gameHistory.length === 0}
+        >
+          Undo
+        </button>
+        <button className='control-btn' onClick={handleHint}>
+          Hint
+        </button>
+        <button className='control-btn' onClick={handleRestart}>
+          Restart
+        </button>
+        <button className='control-btn' onClick={() => setShowSettings(true)}>
+          Settings
+        </button>
       </div>
     </div>
   )
