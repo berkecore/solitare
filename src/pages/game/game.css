@@ -5,4 +5,161 @@
     height: 100vh;
     width: 100vw;
     background-color: #34A249;
+    padding: 20px;
+    box-sizing: border-box;
 }
+
+.game-board {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    max-width: 1200px;
+    width: 100%;
+}
+
+.top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stock-waste {
+    display: flex;
+    gap: 20px;
+}
+
+.foundations {
+    display: flex;
+    gap: 10px;
+}
+
+.tableau {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.tableau-column {
+    position: relative;
+    min-height: 140px;
+    width: 100px;
+}
+
+.card {
+    width: 80px;
+    height: 112px;
+    border-radius: 8px;
+    border: 2px solid #333;
+    background: white;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.card.empty-slot {
+    background: rgba(255,255,255,0.1);
+    border: 2px dashed rgba(255,255,255,0.3);
+    cursor: default;
+}
+
+.card.empty-slot:hover {
+    transform: none;
+    box-shadow: none;
+    background: rgba(255,255,255,0.2);
+}
+
+.stock, .waste, .foundation {
+    width: 80px;
+    height: 112px;
+    position: relative;
+}
+
+.stock {
+    cursor: pointer;
+}
+
+.win-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    text-align: center;
+    z-index: 1000;
+}
+
+.win-message h2 {
+    margin-bottom: 20px;
+    color: #34A249;
+}
+
+.win-message button {
+    padding: 10px 20px;
+    background: #34A249;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.win-message button:hover {
+    background: #2d8a3e;
+}
+
+/* Selected card highlighting */
+.card.selected {
+    box-shadow: 0 0 10px 3px #FFD700;
+    transform: translateY(-5px);
+}
+
+@media (max-width: 768px) {
+    .game {
+        padding: 10px;
+    }
+    
+    .game-board {
+        gap: 20px;
+    }
+    
+    .card {
+        width: 60px;
+        height: 84px;
+    }
+    
+    .stock, .waste, .foundation {
+        width: 60px;
+        height: 84px;
+    }
+    
+    .tableau-column {
+        width: 70px;
+        min-height: 100px;
+    }
+    
+    .foundations {
+        gap: 5px;
+    }
+    
+    .tableau {
+        gap: 5px;
+    }
+}
+
