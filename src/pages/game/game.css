@@ -142,6 +142,40 @@
     transform: translateY(-5px);
 }
 
+/* Custom drag styles */
+.drag-preview {
+    pointer-events: none !important;
+    -webkit-user-select: none;
+    user-select: none;
+    z-index: 9999;
+}
+
+.drag-preview .card {
+    pointer-events: none !important;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: grabbing;
+}
+
+.drag-preview.returning {
+    transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
+}
+
+/* Hide original card during custom drag */
+.card.dragging {
+    opacity: 0.3;
+    transform: scale(0.95);
+    transition: opacity 0.1s, transform 0.1s;
+}
+
+/* Drag hover effects for valid drop zones */
+.foundation:hover,
+.tableau-column:hover,
+.card.empty-slot:hover {
+    background: rgba(255, 215, 0, 0.1);
+    border-color: rgba(255, 215, 0, 0.5);
+}
+
 /* Game Controls */
 .game-controls {
     display: flex;
